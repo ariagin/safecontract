@@ -1,0 +1,66 @@
+.app { min-height: 100vh; background: #f0f4f8; }
+
+.topbar { background: #071E3D; height: 58px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.shield { width: 34px; height: 34px; }
+.brandName { font-size: 16px; font-weight: 600; color: #F0F8FF; }
+.brandName span { color: #00B4D8; }
+.brandSub { font-size: 10px; color: #90E0EF; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.stepBar { display: flex; align-items: center; }
+.step { display: flex; align-items: center; gap: 7px; padding: 0 14px; height: 58px; font-size: 12px; color: #90E0EF; border-bottom: 2px solid transparent; white-space: nowrap; }
+.stepActive { color: #00B4D8; border-bottom-color: #00B4D8; font-weight: 500; }
+.stepDone { color: #5DCAA5; border-bottom-color: #5DCAA5; }
+.stepNum { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(144,224,239,0.3); display: flex; align-items: center; justify-content: center; font-size: 10px; color: #90E0EF; }
+.stepActive .stepNum { background: #00B4D8; border-color: #00B4D8; color: #071E3D; }
+.stepDone .stepNum { background: #1D9E75; border-color: #1D9E75; color: white; }
+
+.content { padding: 28px 20px; max-width: 820px; margin: 0 auto; }
+.card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 14px; }
+.cardHdr { font-size: 14px; font-weight: 600; color: #071E3D; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f0f0f0; }
+
+.uploadZone { border: 2px dashed #00B4D8; border-radius: 10px; padding: 36px 20px; text-align: center; cursor: pointer; background: rgba(0,180,216,0.03); transition: background 0.15s; }
+.uploadZone:hover { background: rgba(0,180,216,0.07); }
+.uploadIcon { font-size: 32px; margin-bottom: 10px; }
+.uploadTitle { font-size: 14px; font-weight: 600; color: #071E3D; margin-bottom: 4px; }
+.uploadSub { font-size: 12px; color: #6b7280; }
+.fileRow { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(0,180,216,0.05); border-radius: 8px; border: 1px solid rgba(0,180,216,0.2); }
+.fileIcon { font-size: 24px; }
+.fileInfo { flex: 1; }
+.fileName { font-size: 14px; font-weight: 600; color: #071E3D; }
+.fileSize { font-size: 11px; color: #6b7280; }
+.removeBtn { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 16px; padding: 4px; border-radius: 4px; }
+.removeBtn:hover { color: #ef4444; }
+
+.firmanteRow { display: grid; grid-template-columns: 1fr 1fr 34px; gap: 12px; align-items: end; padding: 14px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f0f0f0; }
+.field { margin-bottom: 0; }
+.label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 5px; display: block; }
+.addBtn { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: none; border: 1px dashed rgba(0,180,216,0.5); border-radius: 8px; font-size: 13px; color: #00B4D8; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s; }
+.addBtn:hover { background: rgba(0,180,216,0.06); }
+
+.pdfToolbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #071E3D; font-size: 12px; }
+.pdfToolbar span { color: #90E0EF; }
+.badge { background: rgba(0,180,216,0.2); color: #00B4D8; border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 600; }
+.pdfHint { margin-left: auto; font-size: 11px; color: rgba(144,224,239,0.6); }
+.pdfArea { background: #fafaf8; min-height: 420px; position: relative; cursor: crosshair; padding: 32px 48px 60px; }
+.docContent { pointer-events: none; }
+.docTitle { text-align: center; font-size: 14px; font-weight: 700; color: #333; margin-bottom: 20px; font-family: Georgia, serif; letter-spacing: 0.02em; }
+.docLine { height: 1px; background: #d0d0c8; margin: 7px 0; border-radius: 1px; }
+.sigZone { position: absolute; border: 2px solid #00B4D8; background: rgba(0,180,216,0.07); border-radius: 6px; cursor: move; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; user-select: none; }
+.sigZoneLabel { font-size: 11px; font-weight: 600; color: #00B4D8; }
+.sigZoneSub { font-size: 10px; color: #0077A8; }
+.tagCyan { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 9px; border-radius: 20px; background: rgba(0,180,216,0.1); color: #00B4D8; font-weight: 500; }
+
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+.btnPrimary { background: #00B4D8; color: #071E3D; border: none; border-radius: 8px; padding: 0 22px; height: 40px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background 0.15s; }
+.btnPrimary:hover { background: #0077A8; color: white; }
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btnSec { background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 0 18px; height: 40px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background 0.15s; }
+.btnSec:hover { background: #f9fafb; }
+
+.successIcon { width: 64px; height: 64px; border-radius: 50%; background: rgba(29,158,117,0.1); border: 2px solid #1D9E75; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; font-size: 28px; color: #1D9E75; }
+.successTitle { font-size: 20px; font-weight: 700; color: #071E3D; margin-bottom: 8px; }
+.successSub { font-size: 14px; color: #6b7280; margin-bottom: 20px; line-height: 1.6; }
+.certBlock { font-family: monospace; font-size: 12px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; text-align: left; line-height: 1.9; }
+.certKey { color: #6b7280; }
+.certVal { color: #071E3D; font-weight: 600; word-break: break-all; margin-left: 6px; }

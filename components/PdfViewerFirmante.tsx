@@ -6,20 +6,27 @@ interface Props {
 }
 
 export default function PdfViewerFirmante({ pdfBase64 }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [numPages, setNumPages] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-  const renderRef = useRef(false)
+  const mountRef = useRef<HTMLDivElement>(null)
+  const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading')
 
   useEffect(() => {
-    if (!pdfBase64 || renderRef.current) return
-    renderRef.current = true
+    if (!pdfBase64 || !mountRef.current) return
 
-    const script = document.createElement('script')
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
-    script.onload = async () => {
+    const container = mountRef.current
+    container.innerHTML = ''
+
+    const loadScript = () => new Promise<void>((resolve, reject) => {
+      if ((window as any).pdfjsLib) { resolve(); return }
+      const s = document.createElement('script')
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+      s.onload = () => resolve()
+      s.onerror = reject
+      document.head.appendChild(s)
+    })
+
+    const render = async () => {
       try {
+        await loadScript()
         const pdfjsLib = (window as any).pdfjsLib
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
@@ -29,74 +36,53 @@ export default function PdfViewerFirmante({ pdfBase64 }: Props) {
         for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
 
         const pdf = await pdfjsLib.getDocument({ data: arr }).promise
-        setNumPages(pdf.numPages)
 
-        if (!containerRef.current) return
-        containerRef.current.innerHTML = ''
-
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum)
-          const viewport = page.getViewport({ scale: 1.4 })
-
-          const wrapper = document.createElement('div')
-          wrapper.style.cssText = `
-            margin: 0 auto 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            background: white;
-            width: fit-content;
-          `
-
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p)
+          const vp = page.getViewport({ scale: 1.3 })
           const canvas = document.createElement('canvas')
-          canvas.width = viewport.width
-          canvas.height = viewport.height
-          canvas.style.display = 'block'
-
-          wrapper.appendChild(canvas)
-          containerRef.current.appendChild(wrapper)
-
-          const ctx = canvas.getContext('2d')!
-          await page.render({ canvasContext: ctx, viewport }).promise
+          canvas.width = vp.width
+          canvas.height = vp.height
+          canvas.style.cssText = 'display:block;margin:0 auto 8px;background:white;max-width:100%;'
+          container.appendChild(canvas)
+          await page.render({ canvasContext: canvas.getContext('2d')!, viewport: vp }).promise
         }
-        setLoading(false)
+        setStatus('done')
       } catch (e) {
         console.error(e)
-        setError(true)
-        setLoading(false)
+        setStatus('error')
       }
     }
-    script.onerror = () => { setError(true); setLoading(false) }
-    document.head.appendChild(script)
+
+    render()
   }, [pdfBase64])
 
   return (
-    <div style={{
-      background: '#525659',
-      borderRadius: 10,
-      padding: '16px 8px',
-      marginBottom: 14,
-      border: '1px solid #e5e7eb',
-      maxHeight: 600,
-      overflowY: 'auto',
-      overflowX: 'auto',
-    }}>
-      {loading && (
-        <div style={{ textAlign: 'center', padding: 40, color: '#90E0EF', fontSize: 14 }}>
-          <div style={{ width: 28, height: 28, border: '2px solid rgba(0,180,216,0.3)', borderTopColor: '#00B4D8', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+    <div style={{ marginBottom: 14 }}>
+      {status === 'loading' && (
+        <div style={{ background: '#071E3D', borderRadius: 10, padding: 40, textAlign: 'center', color: '#90E0EF', fontSize: 14 }}>
           Cargando documento...
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
-      {error && (
-        <div style={{ textAlign: 'center', padding: 40, color: '#f87171', fontSize: 14 }}>
-          No se pudo cargar el documento. Intentá recargar la página.
+      {status === 'error' && (
+        <div style={{ background: '#1a1a2e', borderRadius: 10, padding: 40, textAlign: 'center', color: '#f87171', fontSize: 14 }}>
+          No se pudo cargar el documento.
         </div>
       )}
-      <div ref={containerRef} style={{ display: loading ? 'none' : 'block' }} />
-      {!loading && numPages > 1 && (
-        <div style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: '#90E0EF' }}>
-          {numPages} páginas · Scrolleá para ver todo
-        </div>
-      )}
+      <div
+        ref={mountRef}
+        style={{
+          background: '#525659',
+          borderRadius: 10,
+          padding: 12,
+          border: '1px solid #e5e7eb',
+          height: 600,
+          overflowY: 'scroll',
+          overflowX: 'hidden',
+          display: status === 'loading' ? 'none' : 'block',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      />
     </div>
   )
 }

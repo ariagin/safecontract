@@ -1,7 +1,10 @@
 // pages/index.tsx
 import { useState, useRef, useCallback } from 'react'
 import Head from 'next/head'
+import dynamic from 'next/dynamic'
 import styles from '@/styles/Home.module.css'
+
+const PdfViewer = dynamic(() => import('@/components/PdfViewer'), { ssr: false })
 
 interface Firmante {
   nombre: string
@@ -219,47 +222,14 @@ export default function Home() {
         {/* PASO 2 */}
         {step === 2 && (
           <div className={styles.content}>
-            <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
-              <div className={styles.pdfToolbar}>
-                <span>📄 {pdfFile?.name}</span>
-                <span className={styles.badge}>Pág. 1</span>
-                <span className={styles.pdfHint}>Hacé clic o arrastrá la zona azul</span>
-              </div>
-              <div
-                ref={pdfAreaRef}
-                className={styles.pdfArea}
-                onClick={handlePdfAreaClick}
-                onMouseMove={handleMouseMove}
-                onMouseUp={() => setDragSig(false)}
-                onMouseLeave={() => setDragSig(false)}
-              >
-                <div className={styles.docContent}>
-                  <div className={styles.docTitle}>ESCRITO DE DEMANDA</div>
-                  {[90, 85, 88, 55, 92, 87, 90, 79, 50, 89, 82, 88, 72, 89, 83, 42].map((w, i) => (
-                    <div key={i} className={styles.docLine} style={{ width: `${w}%` }} />
-                  ))}
-                </div>
-                <div
-                  className={styles.sigZone}
-                  style={{
-                    left: `${sigZone.xPct}%`,
-                    top: `${sigZone.yPct}%`,
-                    width: sigZone.width,
-                    height: sigZone.height,
-                  }}
-                  onMouseDown={handleSigMouseDown}
-                >
-                  <div className={styles.sigZoneLabel}>✍ Zona de firma</div>
-                  <div className={styles.sigZoneSub}>{firmantes[0]?.nombre || 'Firmante'}</div>
-                </div>
-              </div>
-            </div>
+            <PdfViewer
+              pdfBase64={pdfBase64}
+              firmanteName={firmantes[0]?.nombre || 'Firmante'}
+              sigZone={sigZone}
+              onSigZoneChange={setSigZone}
+            />
 
-            <div className={styles.card} style={{ padding: '12px 16px' }}>
-              <span className={styles.tagCyan}>Arrastrá la zona azul para reposicionarla</span>
-            </div>
-
-            <div className={styles.actions}>
+            <div className={styles.actions} style={{ marginTop: 16 }}>
               <button className={styles.btnSec} onClick={() => setStep(1)}>← Atrás</button>
               <button className={styles.btnPrimary} onClick={enviarSolicitud} disabled={loading}>
                 {loading ? 'Enviando...' : '📨 Enviar para firma'}

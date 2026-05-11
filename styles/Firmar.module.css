@@ -54,7 +54,7 @@
 
 .btnVerDoc { background: rgba(0,180,216,0.1); color: #00B4D8; border: 1px solid rgba(0,180,216,0.3); border-radius: 8px; padding: 0 14px; height: 36px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 0.15s; }
 .btnVerDoc:hover { background: rgba(0,180,216,0.2); }
-.pdfViewerWrap { border-radius: 10px; overflow: hidden; margin-bottom: 14px; border: 1px solid #e5e7eb; background: #525659; }
+.pdfViewerWrap { border-radius: 10px; overflow: auto; margin-bottom: 14px; border: 1px solid #e5e7eb; background: #525659; }
 .pdfLoading { padding: 40px; text-align: center; color: #90E0EF; font-size: 14px; background: #071E3D; }
 
 .loading { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 100vh; font-size: 16px; color: #6b7280; background: #071E3D; }

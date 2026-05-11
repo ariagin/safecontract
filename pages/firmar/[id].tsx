@@ -2,7 +2,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
+import dynamic from 'next/dynamic'
 import styles from '@/styles/Firmar.module.css'
+
+const PdfViewerFirmante = dynamic(() => import('@/components/PdfViewerFirmante'), { ssr: false })
 
 type Modalidad = 'draw' | 'type' | 'img'
 
@@ -70,13 +73,35 @@ export default function FirmarPage() {
     const t = e.touches[0], r = canvasRef.current!.getBoundingClientRect(), c = canvasRef.current!
     return { x: (t.clientX - r.left) * (c.width / r.width), y: (t.clientY - r.top) * (c.height / r.height) }
   }
-  const startDraw = (e: React.MouseEvent<HTMLCanvasElement>) => { drawingRef.current = true; const ctx = canvasRef.current!.getContext('2d')!; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y) }
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => { if (!drawingRef.current) return; const ctx = canvasRef.current!.getContext('2d')!; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke() }
-  const startDrawT = (e: React.TouchEvent<HTMLCanvasElement>) => { e.preventDefault(); drawingRef.current = true; const ctx = canvasRef.current!.getContext('2d')!; const p = getPosTouch(e); ctx.beginPath(); ctx.moveTo(p.x, p.y) }
-  const drawT = (e: React.TouchEvent<HTMLCanvasElement>) => { e.preventDefault(); if (!drawingRef.current) return; const ctx = canvasRef.current!.getContext('2d')!; const p = getPosTouch(e); ctx.lineTo(p.x, p.y); ctx.stroke() }
+  const startDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    drawingRef.current = true
+    const ctx = canvasRef.current!.getContext('2d')!
+    const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y)
+  }
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return
+    const ctx = canvasRef.current!.getContext('2d')!
+    const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke()
+  }
+  const startDrawT = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); drawingRef.current = true
+    const ctx = canvasRef.current!.getContext('2d')!
+    const p = getPosTouch(e); ctx.beginPath(); ctx.moveTo(p.x, p.y)
+  }
+  const drawT = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    if (!drawingRef.current) return
+    const ctx = canvasRef.current!.getContext('2d')!
+    const p = getPosTouch(e); ctx.lineTo(p.x, p.y); ctx.stroke()
+  }
   const stopDraw = () => { drawingRef.current = false }
   const clearCanvas = () => { canvasRef.current!.getContext('2d')!.clearRect(0, 0, 520, 140) }
-  const loadImg = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setImgSrc(ev.target?.result as string); reader.readAsDataURL(file) }
+  const loadImg = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setImgSrc(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   const getFirmaBase64 = () => {
     if (modalidad === 'draw') return canvasRef.current!.toDataURL('image/png')
@@ -96,7 +121,8 @@ export default function FirmarPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setFirmado(true); setPdfFirmadoB64(data.pdfFirmadoBase64); setHashFirmado(data.hashFirmado); setTimestamp(data.timestamp)
+      setFirmado(true); setPdfFirmadoB64(data.pdfFirmadoBase64)
+      setHashFirmado(data.hashFirmado); setTimestamp(data.timestamp)
     } catch (err: unknown) {
       alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'))
     } finally { setEnviando(false) }
@@ -108,8 +134,12 @@ export default function FirmarPage() {
     link.download = `FIRMADO_${nombreArchivo}`; link.click()
   }
 
-  if (cargando) return <div className={styles.loading}><div className={styles.spinner}></div>Cargando documento...</div>
-  if (error) return <div className={styles.errorPage}><div className={styles.errorIcon}>✕</div><div>{error}</div></div>
+  if (cargando) return (
+    <div className={styles.loading}><div className={styles.spinner}></div>Cargando documento...</div>
+  )
+  if (error) return (
+    <div className={styles.errorPage}><div className={styles.errorIcon}>✕</div><div>{error}</div></div>
+  )
 
   return (
     <>
@@ -121,7 +151,10 @@ export default function FirmarPage() {
             <ellipse cx="17" cy="17" rx="7" ry="9" stroke="#90E0EF" strokeWidth="1"/>
             <path d="M11 17c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#00B4D8" strokeWidth="1" strokeLinecap="round" fill="none"/>
           </svg>
-          <div><div className={styles.brandName}>Safe<span>Contract</span></div><div className={styles.brandSub}>SGS World · Firma Electrónica</div></div>
+          <div>
+            <div className={styles.brandName}>Safe<span>Contract</span></div>
+            <div className={styles.brandSub}>SGS World · Firma Electrónica</div>
+          </div>
         </div>
 
         <div className={styles.content}>
@@ -137,7 +170,11 @@ export default function FirmarPage() {
                 {timestamp && <div><span className={styles.certKey}>Timestamp:</span><span className={styles.certVal}>{timestamp.replace('T', ' ').substring(0, 19)} UTC</span></div>}
                 <div><span className={styles.certKey}>Marco legal:</span><span className={styles.certVal}>Ley 25.506 Art. 5 — Argentina</span></div>
               </div>
-              {pdfFirmadoB64 && <button className={styles.btnPrimary} style={{ marginTop: 24 }} onClick={descargarPdf}>⬇ Descargar PDF firmado</button>}
+              {pdfFirmadoB64 && (
+                <button className={styles.btnPrimary} style={{ marginTop: 24 }} onClick={descargarPdf}>
+                  ⬇ Descargar PDF firmado
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -152,13 +189,11 @@ export default function FirmarPage() {
                 </button>
               </div>
 
-              {verPdf && (
-                <div className={styles.pdfViewerWrap}>
-                  {pdfOriginalB64
-                    ? <iframe src={`data:application/pdf;base64,${pdfOriginalB64}#toolbar=1`} style={{ width: '100%', height: 520, border: 'none', display: 'block' }} title="Documento a firmar" />
-                    : <div className={styles.pdfLoading}>Cargando vista previa...</div>
-                  }
-                </div>
+              {verPdf && pdfOriginalB64 && (
+                <PdfViewerFirmante pdfBase64={pdfOriginalB64} />
+              )}
+              {verPdf && !pdfOriginalB64 && (
+                <div className={styles.pdfLoading}>Cargando vista previa...</div>
               )}
 
               <div className={styles.card}>

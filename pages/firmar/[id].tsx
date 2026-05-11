@@ -190,7 +190,7 @@ export default function FirmarPage() {
               </div>
 
               {verPdf && pdfOriginalB64 && (
-                <PdfViewerFirmante pdfBase64={pdfOriginalB64} />
+                <PdfViewerFirmante pdfBase64={pdfOriginalB64} nombreArchivo={nombreArchivo} />
               )}
               {verPdf && !pdfOriginalB64 && (
                 <div className={styles.pdfLoading}>Cargando vista previa...</div>

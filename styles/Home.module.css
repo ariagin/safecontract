@@ -21,6 +21,7 @@
 
 .uploadZone { border: 2px dashed #00B4D8; border-radius: 10px; padding: 36px 20px; text-align: center; cursor: pointer; background: rgba(0,180,216,0.03); transition: background 0.15s; }
 .uploadZone:hover { background: rgba(0,180,216,0.07); }
+.uploadZoneOver { background: rgba(0,180,216,0.15) !important; border-color: #00B4D8; border-style: solid; }
 .uploadIcon { font-size: 32px; margin-bottom: 10px; }
 .uploadTitle { font-size: 14px; font-weight: 600; color: #071E3D; margin-bottom: 4px; }
 .uploadSub { font-size: 12px; color: #6b7280; }

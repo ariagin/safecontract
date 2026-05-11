@@ -6,18 +6,8 @@ import styles from '@/styles/Home.module.css'
 
 const PdfViewer = dynamic(() => import('@/components/PdfViewer'), { ssr: false })
 
-interface Firmante {
-  nombre: string
-  email: string
-}
-
-interface SigZone {
-  xPct: number
-  yPct: number
-  width: number
-  height: number
-}
-
+interface Firmante { nombre: string; email: string }
+interface SigZone { xPct: number; yPct: number; width: number; height: number }
 type Step = 1 | 2 | 3
 
 export default function Home() {
@@ -29,69 +19,34 @@ export default function Home() {
   const [sigZone, setSigZone] = useState<SigZone>({ xPct: 10, yPct: 75, width: 220, height: 70 })
   const [loading, setLoading] = useState(false)
   const [resultado, setResultado] = useState<{ id: string; hash: string } | null>(null)
-  const [dragSig, setDragSig] = useState(false)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const pdfAreaRef = useRef<HTMLDivElement>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const processFile = (file: File) => {
+    if (!file || file.type !== 'application/pdf') { alert('Seleccioná un archivo PDF.'); return }
     setPdfFile(file)
     const reader = new FileReader()
-    reader.onload = (ev) => {
-      const b64 = (ev.target?.result as string).split(',')[1]
-      setPdfBase64(b64)
-    }
+    reader.onload = (ev) => { setPdfBase64((ev.target?.result as string).split(',')[1]) }
     reader.readAsDataURL(file)
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (file) processFile(file)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragOver(false)
+    const file = e.dataTransfer.files?.[0]; if (file) processFile(file)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true) }
+  const handleDragLeave = () => setIsDragOver(false)
+
   const addFirmante = () => setFirmantes([...firmantes, { nombre: '', email: '' }])
-  const removeFirmante = (i: number) => {
-    if (firmantes.length === 1) return
-    setFirmantes(firmantes.filter((_, idx) => idx !== i))
-  }
+  const removeFirmante = (i: number) => { if (firmantes.length > 1) setFirmantes(firmantes.filter((_, idx) => idx !== i)) }
   const updateFirmante = (i: number, field: keyof Firmante, val: string) => {
-    const updated = [...firmantes]
-    updated[i][field] = val
-    setFirmantes(updated)
+    const u = [...firmantes]; u[i][field] = val; setFirmantes(u)
   }
-
-  const handlePdfAreaClick = (e: React.MouseEvent) => {
-    if (dragSig) return
-    const rect = pdfAreaRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const xPct = ((e.clientX - rect.left - 110) / rect.width) * 100
-    const yPct = ((e.clientY - rect.top - 35) / rect.height) * 100
-    setSigZone(z => ({
-      ...z,
-      xPct: Math.max(0, Math.min(xPct, 100 - (z.width / rect.width) * 100)),
-      yPct: Math.max(0, Math.min(yPct, 100 - (z.height / rect.height) * 100)),
-    }))
-  }
-
-  const handleSigMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDragSig(true)
-    const rect = pdfAreaRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const sigX = (sigZone.xPct / 100) * rect.width
-    const sigY = (sigZone.yPct / 100) * rect.height
-    setDragOffset({ x: e.clientX - rect.left - sigX, y: e.clientY - rect.top - sigY })
-  }
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragSig) return
-    const rect = pdfAreaRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const x = e.clientX - rect.left - dragOffset.x
-    const y = e.clientY - rect.top - dragOffset.y
-    setSigZone(z => ({
-      ...z,
-      xPct: Math.max(0, Math.min((x / rect.width) * 100, 100 - (z.width / rect.width) * 100)),
-      yPct: Math.max(0, Math.min((y / rect.height) * 100, 100 - (z.height / rect.height) * 100)),
-    }))
-  }, [dragSig, dragOffset])
 
   const enviarSolicitud = async () => {
     if (!pdfBase64) return alert('Seleccioná un PDF primero.')
@@ -99,43 +54,26 @@ export default function Home() {
     setLoading(true)
     try {
       const res = await fetch('/api/crear-solicitud', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pdfBase64,
-          nombreArchivo: pdfFile?.name || 'documento.pdf',
-          firmantes,
-          sigZone: {
-            x: sigZone.xPct,
-            y: sigZone.yPct,
-            width: sigZone.width,
-            height: sigZone.height,
-            page: 0,
-          },
-          mensaje,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64, nombreArchivo: pdfFile?.name || 'documento.pdf', firmantes, sigZone: { x: sigZone.xPct, y: sigZone.yPct, width: sigZone.width, height: sigZone.height, page: 0 }, mensaje }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setResultado(data)
-      setStep(3)
+      setResultado(data); setStep(3)
     } catch (err: unknown) {
       alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'))
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
+
+  const reset = () => { setStep(1); setPdfFile(null); setPdfBase64(''); setFirmantes([{ nombre: '', email: '' }]); setMensaje(''); setResultado(null) }
 
   return (
     <>
       <Head>
         <title>SafeContract — SGS World Firma Electrónica</title>
-        <meta name="description" content="Plataforma de firma electrónica · SGS World Legaltech" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-
       <div className={styles.app}>
-        {/* TOPBAR */}
         <div className={styles.topbar}>
           <div className={styles.logo}>
             <svg viewBox="0 0 34 38" fill="none" className={styles.shield}>
@@ -151,14 +89,9 @@ export default function Home() {
             </div>
           </div>
           <div className={styles.stepBar}>
-            {[
-              { n: 1, label: 'Documento' },
-              { n: 2, label: 'Posicionar' },
-              { n: 3, label: 'Enviado' },
-            ].map(s => (
+            {[{ n: 1, label: 'Documento' }, { n: 2, label: 'Posicionar' }, { n: 3, label: 'Enviado' }].map(s => (
               <div key={s.n} className={`${styles.step} ${step === s.n ? styles.stepActive : step > s.n ? styles.stepDone : ''}`}>
-                <span className={styles.stepNum}>{step > s.n ? '✓' : s.n}</span>
-                {s.label}
+                <span className={styles.stepNum}>{step > s.n ? '✓' : s.n}</span>{s.label}
               </div>
             ))}
           </div>
@@ -170,9 +103,16 @@ export default function Home() {
             <div className={styles.card}>
               <div className={styles.cardHdr}>📄 Cargar documento</div>
               {!pdfFile ? (
-                <div className={styles.uploadZone} onClick={() => fileInputRef.current?.click()}>
-                  <div className={styles.uploadIcon}>⬆</div>
-                  <div className={styles.uploadTitle}>Arrastrá el PDF aquí o hacé clic para seleccionar</div>
+                <div
+                  className={`${styles.uploadZone} ${isDragOver ? styles.uploadZoneOver : ''}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDragEnter={handleDragOver}
+                >
+                  <div className={styles.uploadIcon}>{isDragOver ? '📂' : '⬆'}</div>
+                  <div className={styles.uploadTitle}>{isDragOver ? 'Soltá el PDF aquí' : 'Arrastrá el PDF aquí o hacé clic para seleccionar'}</div>
                   <div className={styles.uploadSub}>Formato PDF · Hasta 20 MB</div>
                   <input ref={fileInputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handleFileChange} />
                 </div>
@@ -212,9 +152,11 @@ export default function Home() {
             </div>
 
             <div className={styles.actions}>
-              <button className={styles.btnPrimary} onClick={() => { if (!pdfBase64) { alert('Seleccioná un PDF primero.'); return } if (firmantes.some(f => !f.nombre || !f.email)) { alert('Completá todos los campos.'); return } setStep(2) }}>
-                Continuar →
-              </button>
+              <button className={styles.btnPrimary} onClick={() => {
+                if (!pdfBase64) { alert('Seleccioná un PDF primero.'); return }
+                if (firmantes.some(f => !f.nombre || !f.email)) { alert('Completá todos los campos.'); return }
+                setStep(2)
+              }}>Continuar →</button>
             </div>
           </div>
         )}
@@ -228,7 +170,6 @@ export default function Home() {
               sigZone={sigZone}
               onSigZoneChange={setSigZone}
             />
-
             <div className={styles.actions} style={{ marginTop: 16 }}>
               <button className={styles.btnSec} onClick={() => setStep(1)}>← Atrás</button>
               <button className={styles.btnPrimary} onClick={enviarSolicitud} disabled={loading}>
@@ -238,7 +179,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* PASO 3: Confirmación */}
+        {/* PASO 3 */}
         {step === 3 && resultado && (
           <div className={styles.content}>
             <div className={styles.card} style={{ textAlign: 'center', padding: '48px 28px' }}>
@@ -253,7 +194,7 @@ export default function Home() {
                 <div><span className={styles.certKey}>SHA-256:</span> <span className={styles.certVal}>{resultado.hash.substring(0, 32)}...</span></div>
                 <div><span className={styles.certKey}>Firmantes:</span> <span className={styles.certVal}>{firmantes.map(f => f.email).join(', ')}</span></div>
               </div>
-              <button className={styles.btnPrimary} style={{ marginTop: 24 }} onClick={() => { setStep(1); setPdfFile(null); setPdfBase64(''); setFirmantes([{ nombre: '', email: '' }]); setMensaje(''); setResultado(null) }}>
+              <button className={styles.btnPrimary} style={{ marginTop: 24 }} onClick={reset}>
                 + Nuevo documento
               </button>
             </div>

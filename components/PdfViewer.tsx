@@ -1,131 +1,116 @@
-// components/PdfViewer.tsx
-import { useState, useRef, useEffect } from 'react'
+import { useState, useCallback } from 'react'
+import { Document, Page, pdfjs } from 'react-pdf'
+import 'react-pdf/dist/Page/AnnotationLayer.css'
+import 'react-pdf/dist/Page/TextLayer.css'
 
-interface SigZone {
-  xPct: number
-  yPct: number
-  width: number
-  height: number
-}
+// Worker local para evitar problemas de CORS con CDN
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
 
 interface Props {
   pdfBase64: string
-  firmanteName: string
-  sigZone: SigZone
-  onSigZoneChange: (z: SigZone) => void
+  nombreArchivo?: string
 }
 
-export default function PdfViewer({ pdfBase64, firmanteName, sigZone, onSigZoneChange }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [dragging, setDragging] = useState(false)
-  const [offset, setOffset] = useState({ x: 0, y: 0 })
-  const pdfUrl = `data:application/pdf;base64,${pdfBase64}`
+export default function PdfViewer({ pdfBase64, nombreArchivo }: Props) {
+  const [numPages, setNumPages] = useState<number>(0)
+  const [pageActual, setPageActual] = useState<number>(1)
+  const [error, setError] = useState<string>('')
 
-  const getRect = () => containerRef.current?.getBoundingClientRect()
+  const pdfData = useCallback(() => {
+    if (!pdfBase64) return null
+    const binary = atob(pdfBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return { data: bytes }
+  }, [pdfBase64])
 
-  const handleSigMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDragging(true)
-    const rect = getRect()
-    if (!rect) return
-    const sigX = (sigZone.xPct / 100) * rect.width
-    const sigY = (sigZone.yPct / 100) * rect.height
-    setOffset({ x: e.clientX - rect.left - sigX, y: e.clientY - rect.top - sigY })
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragging) return
-    const rect = getRect()
-    if (!rect) return
-    const x = e.clientX - rect.left - offset.x
-    const y = e.clientY - rect.top - offset.y
-    onSigZoneChange({
-      ...sigZone,
-      xPct: Math.max(0, Math.min((x / rect.width) * 100, 100 - (sigZone.width / rect.width) * 100)),
-      yPct: Math.max(0, Math.min((y / rect.height) * 100, 100 - (sigZone.height / rect.height) * 100)),
-    })
-  }
-
-  const handleAreaClick = (e: React.MouseEvent) => {
-    if (dragging) return
-    const rect = getRect()
-    if (!rect) return
-    const x = e.clientX - rect.left - sigZone.width / 2
-    const y = e.clientY - rect.top - sigZone.height / 2
-    onSigZoneChange({
-      ...sigZone,
-      xPct: Math.max(0, Math.min((x / rect.width) * 100, 100 - (sigZone.width / rect.width) * 100)),
-      yPct: Math.max(0, Math.min((y / rect.height) * 100, 100 - (sigZone.height / rect.height) * 100)),
-    })
-  }
+  if (!pdfBase64) return null
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      {/* Toolbar */}
+    <div style={{
+      background: '#0a2444',
+      borderRadius: 12,
+      border: '1px solid rgba(0,180,216,0.25)',
+      overflow: 'hidden',
+      marginBottom: 20
+    }}>
+      {/* Header */}
       <div style={{
-        background: '#071E3D', padding: '10px 16px',
-        borderRadius: '10px 10px 0 0',
-        display: 'flex', alignItems: 'center', gap: 10, fontSize: 12,
+        padding: '10px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottom: '1px solid rgba(0,180,216,0.15)',
+        background: 'rgba(0,180,216,0.05)'
       }}>
-        <span style={{ color: '#90E0EF' }}>📄 Documento cargado</span>
-        <span style={{
-          background: 'rgba(0,180,216,0.2)', color: '#00B4D8',
-          borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 600,
-        }}>Pág. 1</span>
-        <span style={{ marginLeft: 'auto', color: 'rgba(144,224,239,0.6)', fontSize: 11 }}>
-          Arrastrá la zona azul para posicionar la firma
+        <span style={{ fontSize: 13, color: '#90E0EF', display: 'flex', alignItems: 'center', gap: 6 }}>
+          📄 {nombreArchivo || 'Documento'}
         </span>
+        {numPages > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => setPageActual(p => Math.max(1, p - 1))}
+              disabled={pageActual <= 1}
+              style={{
+                background: 'transparent', border: '1px solid rgba(0,180,216,0.4)',
+                color: pageActual <= 1 ? '#4a6080' : '#00B4D8',
+                borderRadius: 6, padding: '4px 10px', cursor: pageActual <= 1 ? 'not-allowed' : 'pointer',
+                fontSize: 14
+              }}
+            >‹</button>
+            <span style={{ fontSize: 13, color: '#90E0EF' }}>
+              {pageActual} / {numPages}
+            </span>
+            <button
+              onClick={() => setPageActual(p => Math.min(numPages, p + 1))}
+              disabled={pageActual >= numPages}
+              style={{
+                background: 'transparent', border: '1px solid rgba(0,180,216,0.4)',
+                color: pageActual >= numPages ? '#4a6080' : '#00B4D8',
+                borderRadius: 6, padding: '4px 10px', cursor: pageActual >= numPages ? 'not-allowed' : 'pointer',
+                fontSize: 14
+              }}
+            >›</button>
+          </div>
+        )}
       </div>
 
-      {/* Contenedor con el PDF real + zona de firma superpuesta */}
-      <div
-        ref={containerRef}
-        style={{ position: 'relative', width: '100%', height: 520, cursor: 'crosshair', border: '1px solid #e5e7eb', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden', background: '#525659' }}
-        onClick={handleAreaClick}
-        onMouseMove={handleMouseMove}
-        onMouseUp={() => setDragging(false)}
-        onMouseLeave={() => setDragging(false)}
-      >
-        {/* PDF renderizado en iframe */}
-        <iframe
-          ref={iframeRef}
-          src={pdfUrl + '#toolbar=0&navpanes=0&scrollbar=0'}
-          style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
-          title="Vista previa del documento"
-        />
-
-        {/* Zona de firma superpuesta */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${sigZone.xPct}%`,
-            top: `${sigZone.yPct}%`,
-            width: sigZone.width,
-            height: sigZone.height,
-            border: '2px solid #00B4D8',
-            background: 'rgba(0,180,216,0.12)',
-            borderRadius: 6,
-            cursor: 'move',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 3,
-            userSelect: 'none',
-            zIndex: 10,
-          }}
-          onMouseDown={handleSigMouseDown}
-        >
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#00B4D8' }}>✍ Zona de firma</div>
-          <div style={{ fontSize: 10, color: '#0077A8' }}>{firmanteName}</div>
-        </div>
-      </div>
-
-      <div style={{ padding: '10px 14px', background: '#f9fafb', borderRadius: '0 0 10px 10px', border: '1px solid #e5e7eb', borderTop: 'none' }}>
-        <span style={{ fontSize: 11, background: 'rgba(0,180,216,0.1)', color: '#00B4D8', borderRadius: 20, padding: '2px 10px', fontWeight: 500 }}>
-          Hacé clic en el documento para mover la zona de firma
-        </span>
+      {/* Visor */}
+      <div style={{
+        maxHeight: 580,
+        overflowY: 'auto',
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '16px 8px',
+        background: '#1a2a3a'
+      }}>
+        {error ? (
+          <div style={{ color: '#ff6b6b', padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
+            <div>{error}</div>
+          </div>
+        ) : (
+          <Document
+            file={pdfData()}
+            onLoadSuccess={({ numPages }) => {
+              setNumPages(numPages)
+              setPageActual(1)
+            }}
+            onLoadError={(err) => setError('No se pudo cargar el PDF: ' + err.message)}
+            loading={
+              <div style={{ color: '#90E0EF', padding: 40, textAlign: 'center' }}>
+                Cargando documento...
+              </div>
+            }
+          >
+            <Page
+              pageNumber={pageActual}
+              width={Math.min(600, typeof window !== 'undefined' ? window.innerWidth - 40 : 600)}
+              renderTextLayer={true}
+              renderAnnotationLayer={false}
+            />
+          </Document>
+        )}
       </div>
     </div>
   )

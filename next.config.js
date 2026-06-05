@@ -5,5 +5,5 @@ const nextConfig = {
     config.resolve.alias.canvas = false;
     return config;
   },
-}
-module.exports = nextConfig
+};
+module.exports = nextConfig;

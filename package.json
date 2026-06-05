@@ -1,6 +1,6 @@
 {
   "name": "safecontract",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,21 +8,17 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "14.2.3",
-    "react": "^18",
-    "react-dom": "^18",
-    "react-pdf": "^7.7.3",
-    "pdfjs-dist": "3.11.174",
-    "pdf-lib": "^1.17.1",
-    "resend": "^3.2.0",
-    "react-signature-canvas": "^1.0.6",
-    "uuid": "^9.0.1"
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-pdf": "9.1.0",
+    "pdfjs-dist": "4.4.168",
+    "pdf-lib": "1.17.1",
+    "resend": "3.4.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "@types/uuid": "^9",
-    "typescript": "^5"
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "typescript": "5.5.3"
   }
 }

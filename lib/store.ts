@@ -33,6 +33,10 @@ export interface Solicitud {
   creado: string;
   firmado?: string;
   tipoFirma?: string;
+  evidencia?: {
+    nombre: string; email: string; ip: string;
+    fecha: string; dispositivo: string; hashOriginal: string;
+  };
 }
 
 const carpeta = 'solicitudes';

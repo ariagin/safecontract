@@ -10,7 +10,7 @@ export async function estamparFirma(
   pdfBase64: string,
   firmaDataUrl: string,
   zona: ZonaFirma
-): Promise<{ pdfFirmadoBase64: string; hashFirmado: string }> {
+): Promise<{ pdfEstampadoBuffer: Buffer; pdfFirmadoBase64: string; hashFirmado: string }> {
   const pdfBytes = Buffer.from(pdfBase64, 'base64');
   const pdfDoc = await PDFDocument.load(pdfBytes);
 
@@ -49,13 +49,15 @@ export async function estamparFirma(
 
   pagina.drawImage(firmaImg, { x: x2, y: y2, width: anchoFirma, height: altoFirma });
 
-  const pdfFirmado = await pdfDoc.save();
+  const pdfFirmado = await pdfDoc.save({ useObjectStreams: false });
+  const pdfEstampadoBuffer = Buffer.from(pdfFirmado);
   const hashFirmado = crypto
     .createHash('sha256')
     .update(pdfFirmado)
     .digest('hex');
 
   return {
+    pdfEstampadoBuffer,
     pdfFirmadoBase64: Buffer.from(pdfFirmado).toString('base64'),
     hashFirmado,
   };

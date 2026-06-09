@@ -31,13 +31,23 @@ export async function estamparFirma(
   const { width: pw, height: ph } = pagina.getSize();
 
   // CONVERSION CRITICA: invertir eje Y
-  const anchoFirma = zona.wPct * pw;
-  const altoFirma = zona.hPct * ph;
+  const anchoZona = zona.wPct * pw;
+  const altoZona = zona.hPct * ph;
   const x = zona.xPct * pw;
   const yDesdeArriba = zona.yPct * ph;
-  const y = ph - yDesdeArriba - altoFirma;
+  const yZona = ph - yDesdeArriba - altoZona;
 
-  pagina.drawImage(firmaImg, { x, y, width: anchoFirma, height: altoFirma });
+  // Ajustar la firma DENTRO del recuadro sin deformarla (mantener proporcion).
+  // Se calcula la escala que hace entrar la imagen completa en la zona, y se
+  // centra. Asi una firma vertical, horizontal o cuadrada se ve siempre bien.
+  const dims = firmaImg.scale(1);
+  const escala = Math.min(anchoZona / dims.width, altoZona / dims.height);
+  const anchoFirma = dims.width * escala;
+  const altoFirma = dims.height * escala;
+  const x2 = x + (anchoZona - anchoFirma) / 2;   // centrado horizontal
+  const y2 = yZona + (altoZona - altoFirma) / 2;  // centrado vertical
+
+  pagina.drawImage(firmaImg, { x: x2, y: y2, width: anchoFirma, height: altoFirma });
 
   const pdfFirmado = await pdfDoc.save();
   const hashFirmado = crypto

@@ -1,7 +1,8 @@
 // components/CapturaFirma.tsx
 // Las 3 formas de firmar: manuscrita (canvas), tipeada (texto en cursiva),
-// e imagen (subir PNG/JPG). Devuelve siempre un data URL de imagen PNG
-// listo para estampar en el PDF.
+// e imagen (subir PNG/JPG). Devuelve siempre un data URL de imagen PNG.
+// La opcion "Subir imagen" tiene vista previa, quita el fondo blanco
+// automaticamente y recorta los bordes vacios para que la firma quede limpia.
 import { useRef, useState, useEffect } from 'react';
 
 interface Props {
@@ -14,6 +15,12 @@ export default function CapturaFirma({ onFirma }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dibujando = useRef(false);
   const hayTrazo = useRef(false);
+
+  // estado de la pestaña "imagen"
+  const [imgOriginal, setImgOriginal] = useState<HTMLImageElement | null>(null);
+  const [quitarFondo, setQuitarFondo] = useState(true);
+  const [umbral, setUmbral] = useState(220); // 0-255: que tan claro se considera "fondo"
+  const [previa, setPrevia] = useState<string | null>(null);
 
   // ---- DIBUJAR ----
   useEffect(() => {
@@ -34,15 +41,12 @@ export default function CapturaFirma({ onFirma }: Props) {
     const t = e.touches?.[0];
     return { x: (t ? t.clientX : e.clientX) - r.left, y: (t ? t.clientY : e.clientY) - r.top };
   };
-
   const start = (e: any) => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     const p = pos(e, canvas);
-    dibujando.current = true;
-    hayTrazo.current = true;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
+    dibujando.current = true; hayTrazo.current = true;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
   };
   const move = (e: any) => {
     if (!dibujando.current) return;
@@ -50,8 +54,7 @@ export default function CapturaFirma({ onFirma }: Props) {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     const p = pos(e, canvas);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
+    ctx.lineTo(p.x, p.y); ctx.stroke();
   };
   const end = () => {
     if (!dibujando.current) return;
@@ -79,12 +82,73 @@ export default function CapturaFirma({ onFirma }: Props) {
     onFirma(canvas.toDataURL('image/png'), 'tipeada');
   };
 
-  // ---- IMAGEN ----
+  // ---- IMAGEN: procesar (quitar fondo + recortar bordes vacios) ----
+  const procesarImagen = (img: HTMLImageElement, borrarFondo: boolean, umbralLuz: number) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const px = data.data;
+
+    // limites del contenido (para recortar bordes vacios)
+    let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+    let hayContenido = false;
+
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const i = (y * canvas.width + x) * 4;
+        const r = px[i], g = px[i + 1], b = px[i + 2];
+        const claro = r >= umbralLuz && g >= umbralLuz && b >= umbralLuz;
+        if (borrarFondo && claro) {
+          px[i + 3] = 0; // transparente
+        } else {
+          // es trazo (pixel oscuro): cuenta para el recorte
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          hayContenido = true;
+        }
+      }
+    }
+    ctx.putImageData(data, 0, 0);
+
+    // recortar a los limites del trazo (con un pequeno margen)
+    if (!hayContenido) { minX = 0; minY = 0; maxX = canvas.width; maxY = canvas.height; }
+    const margen = 10;
+    const cx = Math.max(0, minX - margen);
+    const cy = Math.max(0, minY - margen);
+    const cw = Math.min(canvas.width, maxX + margen) - cx;
+    const ch = Math.min(canvas.height, maxY + margen) - cy;
+
+    const recorte = document.createElement('canvas');
+    recorte.width = Math.max(1, cw);
+    recorte.height = Math.max(1, ch);
+    recorte.getContext('2d')!.drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+    return recorte.toDataURL('image/png');
+  };
+
+  // regenera la previa cuando cambian los ajustes
+  useEffect(() => {
+    if (tab !== 'imagen' || !imgOriginal) return;
+    const dataUrl = procesarImagen(imgOriginal, quitarFondo, umbral);
+    setPrevia(dataUrl);
+    onFirma(dataUrl, 'imagen');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgOriginal, quitarFondo, umbral, tab]);
+
   const subirImagen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => onFirma(ev.target?.result as string, 'imagen');
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => setImgOriginal(img);
+      img.src = ev.target?.result as string;
+    };
     reader.readAsDataURL(file);
   };
 
@@ -129,7 +193,35 @@ export default function CapturaFirma({ onFirma }: Props) {
       {tab === 'imagen' && (
         <div>
           <input type="file" accept="image/png,image/jpeg" onChange={subirImagen} className="input" />
-          <p className="muted" style={{ marginTop: 8 }}>Subí una foto o escaneo de tu firma (PNG o JPG). Idealmente con fondo claro o transparente.</p>
+          <p className="muted" style={{ marginTop: 8 }}>Subí una foto o escaneo de tu firma. Mejor con fondo blanco y buena luz.</p>
+
+          {previa && (
+            <div style={{ marginTop: 16 }}>
+              <div className="label">Vista previa de tu firma</div>
+              {/* fondo a cuadros para que se note la transparencia */}
+              <div style={{
+                marginTop: 6, borderRadius: 10, padding: 16, display: 'grid', placeItems: 'center',
+                background: 'repeating-conic-gradient(#e7eef7 0% 25%, #cdd9e8 0% 50%) 50% / 20px 20px',
+                minHeight: 140,
+              }}>
+                <img src={previa} alt="Vista previa de la firma" style={{ maxWidth: '100%', maxHeight: 160 }} />
+              </div>
+
+              <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" id="qf" checked={quitarFondo} onChange={(e) => setQuitarFondo(e.target.checked)} />
+                <label htmlFor="qf" className="muted" style={{ cursor: 'pointer' }}>Quitar fondo blanco automáticamente</label>
+              </div>
+
+              {quitarFondo && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="label">Ajuste de fondo (si queda fondo, bajá; si se borran trazos, subí)</div>
+                  <input type="range" min={120} max={250} value={umbral}
+                    onChange={(e) => setUmbral(Number(e.target.value))}
+                    style={{ width: '100%' }} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,8 +1,9 @@
 // lib/store.ts
-// Almacenamiento permanente en Vercel Blob. Cada solicitud se guarda como
-// un archivo JSON (solicitudes/<id>.json). Asi no se pierde cuando el
+// Almacenamiento permanente en Vercel Blob (store PRIVADO). Cada solicitud
+// se guarda como un archivo JSON (solicitudes/<id>.json). Privado = nadie
+// accede a un escrito sin el token del servidor. Asi no se pierde cuando el
 // servidor de Vercel reinicia (que era el problema "Solicitud no encontrada").
-import { put, head } from '@vercel/blob';
+import { put, get } from '@vercel/blob';
 
 export interface Firmante {
   nombre: string;
@@ -36,32 +37,26 @@ export interface Solicitud {
 
 const carpeta = 'solicitudes';
 const ruta = (id: string) => `${carpeta}/${id}.json`;
-
-// Token del Blob, leido explicitamente del entorno. Lo pasamos en cada
-// llamada para no depender de que la libreria lo encuentre sola.
 const token = process.env.BLOB_READ_WRITE_TOKEN;
 
-// Guarda (o sobrescribe) una solicitud como JSON en el Blob.
+// Guarda (o sobrescribe) una solicitud como JSON en el Blob privado.
 export async function guardar(s: Solicitud): Promise<void> {
-  // Diagnostico: avisa en los logs si el token no esta o tiene formato raro
-  // (no muestra el secreto, solo si existe y como empieza).
-  console.log('[Blob] token presente:', !!token, '| empieza con vercel_blob_rw:', (token || '').startsWith('vercel_blob_rw_'));
   await put(ruta(s.id), JSON.stringify(s), {
-    access: 'public',
+    access: 'private',
     contentType: 'application/json',
-    addRandomSuffix: false,   // el nombre del archivo es fijo (el id)
+    addRandomSuffix: false,
+    allowOverwrite: true,
     token,
   });
 }
 
-// Lee una solicitud por id. Devuelve undefined si no existe.
+// Lee una solicitud por id desde el Blob privado. undefined si no existe.
 export async function obtener(id: string): Promise<Solicitud | undefined> {
   try {
-    const info = await head(ruta(id), { token });
-    if (!info?.url) return undefined;
-    const resp = await fetch(info.url, { cache: 'no-store' });
-    if (!resp.ok) return undefined;
-    return (await resp.json()) as Solicitud;
+    const res = await get(ruta(id), { access: 'private', token });
+    if (!res) return undefined;
+    const texto = await new Response(res.stream).text();
+    return JSON.parse(texto) as Solicitud;
   } catch {
     return undefined;
   }

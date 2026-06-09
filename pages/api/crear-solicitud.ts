@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       firmante, zona, mensaje,
       hashOriginal, estado: 'pendiente', creado: new Date().toISOString(),
     };
-    guardar(solicitud);
+    await guardar(solicitud);
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}`;
     const linkFirma = `${baseUrl}/firmar/${id}`;

@@ -7,14 +7,14 @@ import Logo from '@/components/Logo';
 // react-pdf solo corre en el navegador -> import dinámico sin SSR
 const VisorPdf = dynamic(() => import('@/components/VisorPdf'), { ssr: false });
 
-const ZONA_INICIAL = { xPct: 0.12, yPct: 0.78, wPct: 0.32, hPct: 0.10 };
+import type { Zona } from '@/components/VisorPdf';
 
 export default function Home() {
   const [step, setStep] = useState(1);
   const [pdfBase64, setPdfBase64] = useState('');
   const [nombreArchivo, setNombreArchivo] = useState('');
   const [drag, setDrag] = useState(false);
-  const [zona, setZona] = useState(ZONA_INICIAL);
+  const [zona, setZona] = useState<Zona | null>(null);
   const [firmante, setFirmante] = useState({ nombre: '', email: '' });
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -53,7 +53,7 @@ export default function Home() {
   };
 
   const reset = () => {
-    setStep(1); setPdfBase64(''); setNombreArchivo(''); setZona(ZONA_INICIAL);
+    setStep(1); setPdfBase64(''); setNombreArchivo(''); setZona(null);
     setFirmante({ nombre: '', email: '' }); setMensaje(''); setResultado(null); setError('');
   };
 
@@ -115,11 +115,14 @@ export default function Home() {
           {step === 2 && (
             <div className="card">
               <div className="card-hdr">🎯 Marcá dónde va la firma</div>
-              <p className="muted" style={{ marginBottom: 16 }}>Arrastrá el recuadro celeste hasta donde querés que el firmante coloque su firma. El firmante solo podrá firmar en esa zona.</p>
-              <VisorPdf pdfBase64={pdfBase64} zona={zona} onZonaCambio={setZona} />
+              <p className="muted" style={{ marginBottom: 16 }}>Hacé clic y arrastrá sobre el documento para dibujar el recuadro donde irá la firma. Podés hacerlo en cualquier página. Para ajustarlo, arrastrá el recuadro para moverlo o tirá del punto celeste de la esquina para cambiar el tamaño.</p>
+              <VisorPdf pdfBase64={pdfBase64} zona={zona || undefined} onZonaCambio={setZona} />
+              {zona && (zona.wPct > 0.03 && zona.hPct > 0.02)
+                ? <p className="muted" style={{ marginTop: 12, color: 'var(--cyan-soft)' }}>✓ Zona de firma definida en la página {zona.pagina + 1}.</p>
+                : <p className="muted" style={{ marginTop: 12 }}>Todavía no dibujaste la zona de firma.</p>}
               <div className="btn-row">
                 <button className="btn btn-sec" onClick={() => setStep(1)}>← Atrás</button>
-                <button className="btn" onClick={() => setStep(3)}>Continuar →</button>
+                <button className="btn" onClick={() => setStep(3)} disabled={!zona || zona.wPct < 0.03 || zona.hPct < 0.02}>Continuar →</button>
               </div>
             </div>
           )}

@@ -1,7 +1,8 @@
 // lib/store.ts
-// Almacen simple en memoria del servidor. Guarda las solicitudes de firma
-// mientras el servidor esta activo. Para produccion real conviene una base
-// de datos (Vercel KV), pero esto funciona para uso personal de pocos docs.
+// Almacenamiento permanente en Vercel Blob. Cada solicitud se guarda como
+// un archivo JSON (solicitudes/<id>.json). Asi no se pierde cuando el
+// servidor de Vercel reinicia (que era el problema "Solicitud no encontrada").
+import { put, head, list } from '@vercel/blob';
 
 export interface Firmante {
   nombre: string;
@@ -9,11 +10,11 @@ export interface Firmante {
 }
 
 export interface ZonaFirma {
-  xPct: number;   // posicion X en porcentaje (0 a 1) desde la izquierda
-  yPct: number;   // posicion Y en porcentaje (0 a 1) desde arriba
-  wPct: number;   // ancho en porcentaje del ancho de pagina
-  hPct: number;   // alto en porcentaje del alto de pagina
-  pagina: number; // indice de pagina (0 = primera)
+  xPct: number;
+  yPct: number;
+  wPct: number;
+  hPct: number;
+  pagina: number;
 }
 
 export interface Solicitud {
@@ -33,24 +34,35 @@ export interface Solicitud {
   tipoFirma?: string;
 }
 
-const KEY = '__safecontract_store__';
+const carpeta = 'solicitudes';
+const ruta = (id: string) => `${carpeta}/${id}.json`;
 
-function db(): Map<string, Solicitud> {
-  const g = global as any;
-  if (!g[KEY]) g[KEY] = new Map<string, Solicitud>();
-  return g[KEY];
+// Guarda (o sobrescribe) una solicitud como JSON en el Blob.
+export async function guardar(s: Solicitud): Promise<void> {
+  await put(ruta(s.id), JSON.stringify(s), {
+    access: 'public',
+    contentType: 'application/json',
+    addRandomSuffix: false,   // el nombre del archivo es fijo (el id)
+  });
 }
 
-export function guardar(s: Solicitud) {
-  db().set(s.id, s);
+// Lee una solicitud por id. Devuelve undefined si no existe.
+export async function obtener(id: string): Promise<Solicitud | undefined> {
+  try {
+    // head() nos da la URL publica del blob si existe
+    const info = await head(ruta(id));
+    if (!info?.url) return undefined;
+    const resp = await fetch(info.url, { cache: 'no-store' });
+    if (!resp.ok) return undefined;
+    return (await resp.json()) as Solicitud;
+  } catch {
+    return undefined;
+  }
 }
 
-export function obtener(id: string): Solicitud | undefined {
-  return db().get(id);
-}
-
-export function actualizar(id: string, cambios: Partial<Solicitud>) {
-  const s = db().get(id);
+// Actualiza una solicitud existente (lee, fusiona, vuelve a guardar).
+export async function actualizar(id: string, cambios: Partial<Solicitud>): Promise<void> {
+  const s = await obtener(id);
   if (!s) return;
-  db().set(id, { ...s, ...cambios });
+  await guardar({ ...s, ...cambios });
 }

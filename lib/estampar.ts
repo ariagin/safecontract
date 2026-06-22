@@ -50,33 +50,35 @@ export async function estamparFirma(
 
   pagina.drawImage(firmaImg, { x: x2, y: y2, width: anchoFirma, height: altoFirma });
 
-  // Recuadro con nombre del firmante + leyenda legal, al costado derecho de la grafia.
+  // Texto con nombre del firmante + leyenda legal, DEBAJO de la grafia
+  // (si no hay lugar abajo, lo ubica arriba para no salirse de la pagina).
   const fuente = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fuenteBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const nombre = (nombreFirmante || '').toUpperCase();
   const leyenda1 = 'Firmado Electronicamente con SAFECONTRACT';
   const leyenda2 = 'ART. 5 LEY 25.506';
 
-  // El recuadro va a la derecha de la zona de firma, alineado verticalmente.
-  const boxX = x + anchoZona + 8;
-  const boxAncho = Math.min(180, pw - boxX - 12); // no pasar el borde de la pagina
-  if (boxAncho > 60) {
-    const boxAlto = Math.max(altoZona, 40);
-    const boxY = yZona + (altoZona - boxAlto) / 2;
-    pagina.drawRectangle({
-      x: boxX, y: boxY, width: boxAncho, height: boxAlto,
-      borderColor: rgb(0.0, 0.4, 0.6), borderWidth: 0.8,
-      color: rgb(0.96, 0.99, 1), opacity: 0.6,
-    });
-    let ty = boxY + boxAlto - 13;
-    if (nombre) {
-      pagina.drawText(nombre.substring(0, 32), { x: boxX + 6, y: ty, size: 8, font: fuenteBold, color: rgb(0.03, 0.12, 0.24) });
-      ty -= 12;
-    }
-    pagina.drawText(leyenda1, { x: boxX + 6, y: ty, size: 6, font: fuente, color: rgb(0.2, 0.3, 0.4) });
-    ty -= 9;
-    pagina.drawText(leyenda2, { x: boxX + 6, y: ty, size: 6, font: fuenteBold, color: rgb(0.0, 0.4, 0.6) });
+  const altoTexto = 30;        // alto que ocupan las 3 lineas
+  const margenTexto = 4;       // separacion respecto de la firma
+  const boxX = x;              // alineado con la firma (mismo X de la zona)
+
+  // ¿Hay lugar debajo de la firma? Si la firma esta muy al pie, va arriba.
+  const hayLugarAbajo = (yZona - margenTexto - altoTexto) > 8;
+  // tope superior del bloque de texto
+  let ty: number;
+  if (hayLugarAbajo) {
+    ty = yZona - margenTexto - 2;            // justo debajo de la zona
+  } else {
+    ty = yZona + altoZona + margenTexto + altoTexto - 2; // arriba de la zona
   }
+
+  if (nombre) {
+    pagina.drawText(nombre.substring(0, 40), { x: boxX, y: ty, size: 8, font: fuenteBold, color: rgb(0.03, 0.12, 0.24) });
+    ty -= 11;
+  }
+  pagina.drawText(leyenda1, { x: boxX, y: ty, size: 6.5, font: fuente, color: rgb(0.2, 0.3, 0.4) });
+  ty -= 9;
+  pagina.drawText(leyenda2, { x: boxX, y: ty, size: 6.5, font: fuenteBold, color: rgb(0.0, 0.4, 0.6) });
 
   const pdfFirmado = await pdfDoc.save({ useObjectStreams: false });
   const pdfEstampadoBuffer = Buffer.from(pdfFirmado);

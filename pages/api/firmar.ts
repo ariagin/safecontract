@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const destinatarios = Array.from(new Set([s.firmante.email, estudio].filter(Boolean)));
         const nombreFinal = 'firmado-' + (s.nombreArchivo || 'documento.pdf');
         await resend.emails.send({
-          from: process.env.RESEND_FROM || 'SafeContract <onboarding@resend.dev>',
+          from: process.env.FROM_EMAIL || 'SafeContract <onboarding@resend.dev>',
           to: destinatarios,
           subject: `Documento firmado: ${s.nombreArchivo}`,
           html: `

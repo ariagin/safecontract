@@ -60,7 +60,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const estudio = process.env.MAIL_ESTUDIO || process.env.RESEND_FROM || '';
         const destinatarios = Array.from(new Set([s.firmante.email, estudio].filter(Boolean)));
         const nombreFinal = 'firmado-' + (s.nombreArchivo || 'documento.pdf');
-        await resend.emails.send({
+
+        const { data: mailData, error: mailError } = await resend.emails.send({
           from: process.env.FROM_EMAIL || 'SafeContract <onboarding@resend.dev>',
           to: destinatarios,
           subject: `Documento firmado: ${s.nombreArchivo}`,
@@ -79,10 +80,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             </div>`,
           attachments: [{ filename: nombreFinal, content: Buffer.from(pdfPades).toString('base64') }],
         });
+
+        if (mailError) {
+          console.error('RESEND ERROR:', JSON.stringify(mailError));
+        } else {
+          console.log('RESEND OK, id:', mailData?.id, 'destinatarios:', JSON.stringify(destinatarios));
+        }
       } catch (e: any) {
         console.error('mail documento firmado:', e?.message || e);
         // no rompemos la firma si el mail falla
       }
+    } else {
+      console.error('RESEND_API_KEY no está configurada, no se envió el mail.');
     }
 
     return res.status(200).json({ ok: true, hashFirmado, firmado: fecha, evidencia });

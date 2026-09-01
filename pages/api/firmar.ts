@@ -57,12 +57,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (process.env.RESEND_API_KEY) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        const estudio = process.env.MAIL_ESTUDIO || process.env.RESEND_FROM || '';
+        const estudio = process.env.MAIL_ESTUDIO || '';
         const destinatarios = Array.from(new Set([s.firmante.email, estudio].filter(Boolean)));
         const nombreFinal = 'firmado-' + (s.nombreArchivo || 'documento.pdf');
 
         const { data: mailData, error: mailError } = await resend.emails.send({
-          from: process.env.FROM_EMAIL || 'SafeContract <onboarding@resend.dev>',
+          from: process.env.RESEND_FROM || 'SafeContract <safecontract@sgsworld.com.ar>',
           to: destinatarios,
           subject: `Documento firmado: ${s.nombreArchivo}`,
           html: `
